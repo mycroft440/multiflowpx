@@ -1,0 +1,43 @@
+file(REMOVE_RECURSE
+  "CMakeFiles/proxy.dir/src/ArgumentParser.cpp.o"
+  "CMakeFiles/proxy.dir/src/ArgumentParser.cpp.o.d"
+  "CMakeFiles/proxy.dir/src/Client.cpp.o"
+  "CMakeFiles/proxy.dir/src/Client.cpp.o.d"
+  "CMakeFiles/proxy.dir/src/Common.cpp.o"
+  "CMakeFiles/proxy.dir/src/Common.cpp.o.d"
+  "CMakeFiles/proxy.dir/src/Connection.cpp.o"
+  "CMakeFiles/proxy.dir/src/Connection.cpp.o.d"
+  "CMakeFiles/proxy.dir/src/ConnectionType.cpp.o"
+  "CMakeFiles/proxy.dir/src/ConnectionType.cpp.o.d"
+  "CMakeFiles/proxy.dir/src/HttpConnection.cpp.o"
+  "CMakeFiles/proxy.dir/src/HttpConnection.cpp.o.d"
+  "CMakeFiles/proxy.dir/src/HttpParseResponse.cpp.o"
+  "CMakeFiles/proxy.dir/src/HttpParseResponse.cpp.o.d"
+  "CMakeFiles/proxy.dir/src/OpenVPNConnectionType.cpp.o"
+  "CMakeFiles/proxy.dir/src/OpenVPNConnectionType.cpp.o.d"
+  "CMakeFiles/proxy.dir/src/ProxyServer.cpp.o"
+  "CMakeFiles/proxy.dir/src/ProxyServer.cpp.o.d"
+  "CMakeFiles/proxy.dir/src/ResponseParser.cpp.o"
+  "CMakeFiles/proxy.dir/src/ResponseParser.cpp.o.d"
+  "CMakeFiles/proxy.dir/src/SSHConnectionType.cpp.o"
+  "CMakeFiles/proxy.dir/src/SSHConnectionType.cpp.o.d"
+  "CMakeFiles/proxy.dir/src/Server.cpp.o"
+  "CMakeFiles/proxy.dir/src/Server.cpp.o.d"
+  "CMakeFiles/proxy.dir/src/SslProxyServer.cpp.o"
+  "CMakeFiles/proxy.dir/src/SslProxyServer.cpp.o.d"
+  "CMakeFiles/proxy.dir/src/V2RayConnectionType.cpp.o"
+  "CMakeFiles/proxy.dir/src/V2RayConnectionType.cpp.o.d"
+  "CMakeFiles/proxy.dir/src/WebsocketParseResponse.cpp.o"
+  "CMakeFiles/proxy.dir/src/WebsocketParseResponse.cpp.o.d"
+  "CMakeFiles/proxy.dir/src/Worker.cpp.o"
+  "CMakeFiles/proxy.dir/src/Worker.cpp.o.d"
+  "CMakeFiles/proxy.dir/src/main.cpp.o"
+  "CMakeFiles/proxy.dir/src/main.cpp.o.d"
+  "proxy"
+  "proxy.pdb"
+)
+
+# Per-language clean rules from dependency scanning.
+foreach(lang CXX)
+  include(CMakeFiles/proxy.dir/cmake_clean_${lang}.cmake OPTIONAL)
+endforeach()
