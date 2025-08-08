@@ -67,7 +67,7 @@ install_python_deps() {
     echo -e "\\n${Y}>>> Instalando pacotes Python com pip...${W}"
     echo -e "    (psutil)"
     
-    if ! pip3 install psutil; then
+    if ! pip3 install --break-system-packages psutil; then
         echo -e "${R}Falha ao instalar pacotes Python. A instalação foi abortada.${W}"
         exit 1
     fi
@@ -108,4 +108,3 @@ main() {
 
 # Executa o script
 main
-
