@@ -60,6 +60,13 @@ install_system_deps() {
         echo -e "${R}Falha ao instalar pacotes do sistema. A instalação foi abortada.${W}"
         exit 1
     fi
+
+    echo -e "\\n${Y}>>> Clonando o repositório multiflowpx...${W}"
+    if [ ! -d "/root/multiflowpx" ]; then
+        git clone https://github.com/mycroft440/multiflowpx.git /root/multiflowpx
+    else
+        echo -e "${Y}Repositório multiflowpx já existe em /root/multiflowpx. Pulando a clonagem.${W}"
+    fi
 }
 
 # Instala as dependências de Python via pip
@@ -108,3 +115,4 @@ main() {
 
 # Executa o script
 main
+
