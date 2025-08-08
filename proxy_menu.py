@@ -65,12 +65,19 @@ class ProxyMenu:
         try:
             if os.path.exists(CONFIG_FILE):
                 with open(CONFIG_FILE, 'r') as f:
-                    return json.load(f)
+                    loaded_config = json.load(f)
+                    # Ensure 'port' is always a list
+                    if 'port' in loaded_config and not isinstance(loaded_config['port'], list):
+                        loaded_config['port'] = [loaded_config['port']]
+                    # Ensure 'mode' is always a list
+                    if 'mode' in loaded_config and not isinstance(loaded_config['mode'], list):
+                        loaded_config['mode'] = [loaded_config['mode']]
+                    return loaded_config
         except (IOError, json.JSONDecodeError) as e:
             print(f"{Colors.WARNING}Aviso: Não foi possível carregar o arquivo de configuração: {e}{Colors.ENDC}")
         # Retorna uma configuração padrão se o arquivo não existir ou for inválido.
         return {
-            "mode": "ssh", "port": 8080, "host": "127.0.0.1:22", "sni": "example.com",
+            "mode": ["ssh"], "port": [8080], "host": "127.0.0.1:22", "sni": "example.com",
             "workers": 4, "buffer_size": 8192, "log_level": 1
         }
 
@@ -118,8 +125,23 @@ class ProxyMenu:
     def main_menu(self):
         """Exibe o menu principal."""
         while True:
-            status = f"{Colors.GREEN}Ativo{Colors.ENDC}" if self.is_running() else f"{Colors.FAIL}Inativo{Colors.ENDC}"
-            self.print_header(f"Menu Principal (Status: {status})")
+            status_text = f"{Colors.GREEN}Ativo{Colors.ENDC}" if self.is_running() else f"{Colors.FAIL}Inativo{Colors.ENDC}"
+            
+            # Obter porta(s)
+            current_port = self.config.get("port", "N/A")
+            port_display = ", ".join(map(str, current_port)) if isinstance(current_port, list) else str(current_port)
+            # Obter protocolo(s)
+            current_mode = self.config.get("mode", "N/A")
+            protocol_display = ", ".join([m.upper() for m in current_mode]) if isinstance(current_mode, list) else current_mode.upper()
+
+            self.clear_screen()
+            print(f"{Colors.HEADER}=================================================={Colors.ENDC}")
+            print(f"{Colors.HEADER}      ===== MultiFlowPX Proxy ====={Colors.ENDC}")
+            print(f"{Colors.HEADER}=================================================={Colors.ENDC}")
+            print(f"Status: {status_text}")
+            print(f"Porta(s): {port_display}")
+            print(f"Protocolo: {protocol_display}\n")
+
             print("1. Instalar Proxy")
             print("2. Configuração Básica")
             print("3. Configuração Avançada")
@@ -166,9 +188,22 @@ class ProxyMenu:
         self.print_header("Configuração Básica")
         
         # Modo de Conexão
-        self.config['mode'] = input(f"Modo de conexão [ssh, ssl, openvpn, v2ray] (atual: {self.config.get('mode')}): ") or self.config.get('mode')
+        mode_input = input(f"Modo(s) de conexão [ssh, ssl, openvpn, v2ray] (separados por vírgula, atual: {', '.join(self.config.get('mode', ['N/A']))}): ")
+        if mode_input:
+            self.config['mode'] = [m.strip() for m in mode_input.split(',')]
+
         # Porta Local
-        self.config['port'] = int(input(f"Porta de escuta local (atual: {self.config.get('port')}): ") or self.config.get('port'))
+        port_input = input(f"Porta(s) de escuta local (separadas por vírgula, atual: {', '.join(map(str, self.config.get('port', ['N/A'])))}): ")
+        if port_input:
+            try:
+                ports = [int(p.strip()) for p in port_input.split(',')]
+                if all(1 <= p <= 65535 for p in ports):
+                    self.config['port'] = ports
+                else:
+                    print(f"{Colors.FAIL}Porta(s) inválida(s). Por favor, digite números entre 1 e 65535.{Colors.ENDC}")
+            except ValueError:
+                print(f"{Colors.FAIL}Entrada inválida para porta(s). Por favor, digite números separados por vírgula.{Colors.ENDC}")
+
         # Host Remoto
         self.config['host'] = input(f"Host e porta remotos (ex: 127.0.0.1:22) (atual: {self.config.get('host')}): ") or self.config.get('host')
         # SNI
@@ -212,7 +247,7 @@ class ProxyMenu:
                     if port_input:
                         new_port = int(port_input)
                         if 1 <= new_port <= 65535:
-                            self.config["port"] = new_port
+                            self.config["port"] = [new_port]
                             break
                         else:
                             print(f"{Colors.FAIL}Porta inválida. Por favor, digite um número entre 1 e 65535.{Colors.ENDC}")
