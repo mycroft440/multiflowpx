@@ -120,15 +120,15 @@ class ProxyMenu:
         while True:
             status = f"{Colors.GREEN}Ativo{Colors.ENDC}" if self.is_running() else f"{Colors.FAIL}Inativo{Colors.ENDC}"
             self.print_header(f"Menu Principal (Status: {status})")
-            print("1. Instalar / Reinstalar Proxy (Executar install.sh)")
+            print("1. Instalar Proxy")
             print("2. Configuração Básica")
             print("3. Configuração Avançada")
-            print("4. Salvar Configurações e Iniciar Proxy")
-            print("5. Iniciar/Parar Proxy")
-            print("6. Reiniciar Proxy")
-            print("7. Desinstalar Completamente")
-            print("8. Ver Configurações Atuais")
-            print("9. Sair")
+
+            print("4. Iniciar/Parar Proxy")
+            print("5. Reiniciar Proxy")
+            print("6. Desinstalar Completamente")
+            print("7. Ver Configurações Atuais")
+            print("8. Sair")
             choice = input("\nEscolha uma opção: ")
 
             if choice == '1':
@@ -138,31 +138,25 @@ class ProxyMenu:
             elif choice == '3':
                 self.submenu_config_advanced()
             elif choice == '4':
-                self.save_config()
-                print("\nReiniciando o proxy para aplicar as novas configurações...")
-                self.stop_proxy()
-                time.sleep(1)
-                self.start_proxy()
-            elif choice == '5':
                 if self.is_running():
                     self.stop_proxy()
                 else:
                     self.start_proxy()
-            elif choice == '6':
+            elif choice == '5':
                 self.print_header("Reiniciar Proxy")
                 self.stop_proxy()
                 time.sleep(1)
                 self.start_proxy()
-            elif choice == '7':
+            elif choice == '6':
                 self.menu_uninstall()
-            elif choice == '8':
+            elif choice == '7':
                 self.view_current_config()
-            elif choice == '9':
+            elif choice == '8':
                 sys.exit(0)
             else:
                 print(f"{Colors.FAIL}Opção inválida. Tente novamente.{Colors.ENDC}")
             
-            if choice in ["1", "2", "3", "4", "5", "6", "7", "8"]:
+            if choice in ["1", "2", "3", "4", "5", "6", "7"]:
                 input("\nPressione Enter para voltar ao menu...")
 
 
