@@ -115,3 +115,68 @@ main() {
 
 # Executa o script
 main
+
+# Compila o executável do proxy C++
+compile_proxy() {
+    echo -e "\n${Y}>>> Compilando o executável do proxy C++...${W}"
+    # Cria um diretório de build temporário
+    mkdir -p /root/multiflowpx/build
+    cd /root/multiflowpx/build
+    
+    # Executa o CMake para configurar o projeto
+    if ! cmake /root/multiflowpx/multiflowproxy; then
+        echo -e "${R}Falha ao configurar o CMake. A instalação foi abortada.${W}"
+        exit 1
+    fi
+    
+    # Compila o projeto
+    if ! make; then
+        echo -e "${R}Falha ao compilar o proxy C++. A instalação foi abortada.${W}"
+        exit 1
+    fi
+    
+    # Copia o executável compilado para /usr/local/bin
+    cp proxy /usr/local/bin/multiflowpx_proxy
+    echo -e "${G}Executável do proxy compilado e copiado para /usr/local/bin/multiflowpx_proxy.${W}"
+    cd /root/multiflowpx
+}
+
+# Instala o serviço systemd e copia o proxy_menu.py
+install_systemd_service() {
+    echo -e "\n${Y}>>> Instalando o serviço systemd para o MultiFlowPX e copiando o proxy_menu.py...${W}"
+    cp /root/multiflowpx/multiflowproxy/multiflowpx.service /etc/systemd/system/
+    cp /root/multiflowpx/proxy_menu.py /usr/local/bin/multiflowpx_menu
+    chmod +x /usr/local/bin/multiflowpx_menu
+    systemctl daemon-reload
+    systemctl enable multiflowpx.service
+    echo -e "${G}Serviço systemd instalado e habilitado. Script de menu copiado para /usr/local/bin/multiflowpx_menu.${W}"
+}
+
+# --- Função Principal (modificada) ---
+main() {
+    print_header
+    check_root
+
+    echo -e "${G}Bem-vindo ao instalador do MultiFlow Manager!${W}"
+    echo -e "${Y}Este script irá preparar o ambiente, instalando todas as dependências.${W}"
+    echo -e "---------------------------------------------------------------------"
+    
+    install_system_deps
+    install_python_deps
+    set_permissions
+    compile_proxy
+    install_systemd_service
+
+    echo
+    echo -e "${C}=====================================================================${W}"
+    echo -e "${G}      Ambiente preparado com sucesso!      ${W}"
+    echo -e "${C}=====================================================================${W}"
+    echo -e "\n${Y}Todos os pré-requisitos foram instalados e o serviço configurado.${W}"
+    echo -e "${Y}Para gerenciar o proxy, execute o menu principal:${W}"
+    echo -e "\n    ${C}sudo python3 multiflowpx/proxy_menu.py${W}\n"
+}
+
+# Executa o script
+main
+
+
