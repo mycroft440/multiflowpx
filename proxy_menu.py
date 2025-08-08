@@ -200,10 +200,29 @@ class ProxyMenu:
             
         try:
             print(f"Executando {INSTALL_SCRIPT_PATH}...")
-            # Dá permissão de execução e roda o script.
-            subprocess.run(['chmod', '+x', INSTALL_SCRIPT_PATH], check=True)
-            subprocess.run(['bash', INSTALL_SCRIPT_PATH], check=True)
+            subprocess.run(["sudo", "bash", INSTALL_SCRIPT_PATH], check=True)
             print(f"{Colors.GREEN}\nScript de instalação concluído com sucesso!{Colors.ENDC}")
+
+            # Solicitar a porta e iniciar o proxy
+            self.print_header("Configuração Inicial da Porta")
+            while True:
+                try:
+                    current_port = self.config.get('port', 8080)
+                    port_input = input(f"Digite a porta de escuta local para o proxy (atual: {current_port}): ")
+                    if port_input:
+                        new_port = int(port_input)
+                        if 1 <= new_port <= 65535:
+                            self.config["port"] = new_port
+                            break
+                        else:
+                            print(f"{Colors.FAIL}Porta inválida. Por favor, digite um número entre 1 e 65535.{Colors.ENDC}")
+                    else:
+                        break # Usa a porta padrão se nada for digitado
+                except ValueError:
+                    print(f"{Colors.FAIL}Entrada inválida. Por favor, digite um número para a porta.{Colors.ENDC}")
+            self.save_config()
+            self.start_proxy()
+
         except subprocess.CalledProcessError as e:
             print(f"{Colors.FAIL}\nOcorreu um erro durante a execução do script de instalação: {e}{Colors.ENDC}")
 
