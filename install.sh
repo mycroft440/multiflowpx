@@ -115,4 +115,3 @@ main() {
 
 # Executa o script
 main
-
