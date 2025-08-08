@@ -120,50 +120,15 @@ class ProxyMenu:
         while True:
             status = f"{Colors.GREEN}Ativo{Colors.ENDC}" if self.is_running() else f"{Colors.FAIL}Inativo{Colors.ENDC}"
             self.print_header(f"Menu Principal (Status: {status})")
-            print("1. Instalar e Configurar Proxy")
-            print("2. Iniciar/Parar Proxy")
-            print("3. Reiniciar Proxy")
-            print("4. Desinstalar Completamente")
-            print("5. Ver Logs do Proxy")
-            print("6. Ver Configurações Atuais")
-            print("7. Sair")
-            choice = input("\nEscolha uma opção: ")
-
-            if choice == '1':
-                self.menu_install_configure()
-            elif choice == '2':
-                if self.is_running():
-                    self.stop_proxy()
-                else:
-                    self.start_proxy()
-            elif choice == '3':
-                self.print_header("Reiniciar Proxy")
-                self.stop_proxy()
-                time.sleep(1)
-                self.start_proxy()
-            elif choice == '4':
-                self.menu_uninstall()
-            elif choice == '5':
-                self.view_logs()
-            elif choice == '6':
-                self.view_current_config()
-            elif choice == '7':
-                sys.exit(0)
-            else:
-                print(f"{Colors.FAIL}Opção inválida. Tente novamente.{Colors.ENDC}")
-            
-            if choice in ['2', '3', '4', '5', '6']:
-                input("\nPressione Enter para voltar ao menu...")
-
-    def menu_install_configure(self):
-        """Menu para instalação e configuração."""
-        while True:
-            self.print_header("Instalar e Configurar")
             print("1. Instalar / Reinstalar Proxy (Executar install.sh)")
             print("2. Configuração Básica")
             print("3. Configuração Avançada")
             print("4. Salvar Configurações e Iniciar Proxy")
-            print("5. Voltar ao Menu Principal")
+            print("5. Iniciar/Parar Proxy")
+            print("6. Reiniciar Proxy")
+            print("7. Desinstalar Completamente")
+            print("8. Ver Configurações Atuais")
+            print("9. Sair")
             choice = input("\nEscolha uma opção: ")
 
             if choice == '1':
@@ -179,12 +144,28 @@ class ProxyMenu:
                 time.sleep(1)
                 self.start_proxy()
             elif choice == '5':
-                break
+                if self.is_running():
+                    self.stop_proxy()
+                else:
+                    self.start_proxy()
+            elif choice == '6':
+                self.print_header("Reiniciar Proxy")
+                self.stop_proxy()
+                time.sleep(1)
+                self.start_proxy()
+            elif choice == '7':
+                self.menu_uninstall()
+            elif choice == '8':
+                self.view_current_config()
+            elif choice == '9':
+                sys.exit(0)
             else:
-                print(f"{Colors.FAIL}Opção inválida.{Colors.ENDC}")
+                print(f"{Colors.FAIL}Opção inválida. Tente novamente.{Colors.ENDC}")
             
-            if choice in ['1', '2', '3', '4']:
-                input("\nPressione Enter para continuar...")
+            if choice in ["1", "2", "3", "4", "5", "6", "7", "8"]:
+                input("\nPressione Enter para voltar ao menu...")
+
+
 
     def submenu_config_basic(self):
         """Submenu para as configurações essenciais."""
