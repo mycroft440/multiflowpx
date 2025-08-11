@@ -13,7 +13,7 @@ REPO_URL="https://github.com/mycroft440/multiflowpx.git"
 # Funções de log
 log() { echo -e "${AMARELO}[LOG] $1${NC}"; }
 sucesso() { echo -e "${VERDE}[SUCESSO] $1${NC}"; }
-erro() { echo -e "${VERMELHO}[ERRO] $1${NC}" >&2; exit 1; }
+erro() { echo -e "${VERELHO}[ERRO] $1${NC}" >&2; exit 1; }
 
 # 1. Verificar privilégios de root
 log "Verificando privilégios de root..."
@@ -40,11 +40,8 @@ fi
 sucesso "Código-fonte pronto em $PROJETO_DIR."
 
 # 4. Instalar dependências de compilação
-# --- INÍCIO DA CORREÇÃO ---
-# Adicionado 'libcurl4-openssl-dev' à lista de dependências para resolver o erro do CMake.
 log "Instalando dependências de compilação (build-essential, cmake, libssl-dev, libboost-all-dev, libcurl4-openssl-dev)..."
 apt-get install -y build-essential cmake libssl-dev libboost-all-dev libcurl4-openssl-dev || erro "Falha ao instalar as dependências de compilação."
-# --- FIM DA CORREÇÃO ---
 sucesso "Dependências de compilação instaladas."
 
 # 5. Compilar o projeto
@@ -63,12 +60,30 @@ sucesso "Projeto compilado com sucesso."
 
 # 6. Instalar o binário e o serviço
 log "Instalando o binário 'multiflowpx' em /usr/local/bin/..."
-install -m 755 proxy /usr/local/bin/ || erro "Falha ao instalar o binário."
+install -m 755 proxy /usr/local/bin/proxy || erro "Falha ao instalar o binário."
 sucesso "Binário instalado."
 
 log "Instalando o serviço systemd..."
 cd .. # Voltar para o diretório multiflowproxy
-install -m 644 multiflowpx.service /etc/systemd/system/ || erro "Falha ao instalar o ficheiro de serviço."
+
+# Criar o arquivo de serviço com o conteúdo corrigido
+cat <<EOF > /etc/systemd/system/multiflowpx.service
+[Unit]
+Description=MultiFlowPX Proxy Server
+After=network.target
+
+[Service]
+Type=simple
+ExecStart=/usr/local/bin/proxy
+Restart=on-failure
+User=root
+Group=root
+
+[Install]
+WantedBy=multi-user.target
+EOF
+
+sucesso "Ficheiro de serviço instalado."
 
 # 7. Habilitar e iniciar o serviço
 log "Recarregando o systemd, habilitando e iniciando o serviço multiflowpx..."
