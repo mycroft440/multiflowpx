@@ -63,7 +63,7 @@ sucesso "Projeto compilado com sucesso."
 
 # 6. Instalar o binário e o serviço
 log "Instalando o binário 'multiflowpx' em /usr/local/bin/..."
-install -m 755 multiflowpx /usr/local/bin/ || erro "Falha ao instalar o binário."
+install -m 755 proxy /usr/local/bin/ || erro "Falha ao instalar o binário."
 sucesso "Binário instalado."
 
 log "Instalando o serviço systemd..."
