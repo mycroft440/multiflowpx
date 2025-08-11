@@ -1,0 +1,14 @@
+[Unit]
+Description=MultiFlowPX Proxy Server
+After=network.target
+
+[Service]
+Type=simple
+ExecStart=/usr/local/bin/multiflowpx_proxy
+Restart=on-failure
+User=root
+Group=root
+
+[Install]
+
+
