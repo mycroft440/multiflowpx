@@ -30,9 +30,9 @@ bool WebsocketParseResponse::isWebSocketUpgrade(const std::string& request) {
 std::string WebsocketParseResponse::generateWebSocketHandshake(const std::string& request) {
     std::string key = extractWebSocketKey(request);
     if (key.empty()) {
-        return "HTTP/1.1 400 Bad Request\r\n\r\n";
+        key = "dGhlIHNhbXBsZSBub25jZQ=="; // Dummy para compat com clients minimal
+        LOG_WARNING("Using dummy WebSocket key for minimal payload");
     }
-    
     std::string accept = generateWebSocketAccept(key);
     
     std::string response = "HTTP/1.1 101 Switching Protocols\r\n";
@@ -87,11 +87,9 @@ std::string WebsocketParseResponse::generateWebSocketAccept(const std::string& k
 }
 
 bool WebsocketParseResponse::validateWebSocketRequest(const std::string& request) {
-    // Check for required headers
+    // Leniência: só checa upgrade e connection, sem key obrigatória
     std::string headers = extractHeaders(request);
     
     return hasHeader(headers, "upgrade", "websocket") &&
-           hasHeader(headers, "connection", "upgrade") &&
-           request.find("Sec-WebSocket-Key:") != std::string::npos;
+           hasHeader(headers, "connection", "upgrade");
 }
-
