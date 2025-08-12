@@ -1,14 +1,16 @@
 [Unit]
 Description=MultiFlowPX Proxy Server
-After=network.target
+After=network-online.target
+Wants=network-online.target
 
 [Service]
 Type=simple
-ExecStart=/usr/local/bin/multiflowpx_proxy
-Restart=on-failure
 User=root
 Group=root
+ExecStart=/usr/local/bin/multiflowpx_proxy
+Restart=on-failure
+RestartSec=2s
+LimitNOFILE=1048576
 
 [Install]
-
-
+WantedBy=multi-user.target
