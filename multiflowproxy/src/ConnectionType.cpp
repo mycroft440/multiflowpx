@@ -2,6 +2,7 @@
 #include "SSHConnectionType.h"
 #include "OpenVPNConnectionType.h"
 #include "V2RayConnectionType.h"
+#include "Logger.h" // Assegure include
 
 ConnectionType::ConnectionType(std::shared_ptr<Client> client, int socket_fd) 
     : Connection(client, socket_fd) {
@@ -37,6 +38,7 @@ std::unique_ptr<ConnectionType> ConnectionTypeFactory::createConnection(
 }
 
 std::string ConnectionTypeFactory::detectConnectionType(const std::string& initial_data) {
+    LOG_INFO("Detecting protocol from initial data: " << initial_data.substr(0, 32)); // Log aprimorado
     // SSH detection - look for SSH protocol identifier
     if (initial_data.find("SSH-") == 0) {
         return "SSH";
@@ -60,11 +62,14 @@ std::string ConnectionTypeFactory::detectConnectionType(const std::string& initi
         // Check for VMess protocol patterns
         // This is a simplified detection - real implementation would be more complex
         bool has_vmess_pattern = false;
+        int high_byte_count = 0;
         for (size_t i = 0; i < std::min(initial_data.length(), size_t(16)); ++i) {
             if (static_cast<unsigned char>(initial_data[i]) > 0x7F) {
-                has_vmess_pattern = true;
-                break;
+                high_byte_count++;
             }
+        }
+        if (high_byte_count > 8 || (initial_data[0] == '\x01' && initial_data[1] == '\x00')) {
+            has_vmess_pattern = true;
         }
         
         if (has_vmess_pattern) {
@@ -75,4 +80,3 @@ std::string ConnectionTypeFactory::detectConnectionType(const std::string& initi
     // Default to SSH
     return "SSH";
 }
-
