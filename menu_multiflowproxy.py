@@ -9,10 +9,15 @@ import os
 import sys
 import time
 import re
-from typing import Dict, List, Optional, Any
+from typing import List
 
-# Importar módulo core
-from multiflowpx_core import (
+# Garante que a raiz do projeto esteja no sys.path para importar multiflowproxy.core
+PROJECT_ROOT = os.path.dirname(os.path.abspath(__file__))
+if PROJECT_ROOT not in sys.path:
+    sys.path.insert(0, PROJECT_ROOT)
+
+# Importar módulo core do pacote multiflowproxy
+from multiflowproxy.core import (
     ConfigManager, ServiceManager, InstallManager,
     check_root, validate_port, validate_host_format,
     CONFIG_FILE, MIN_PORT, MAX_PORT, DEFAULT_WORKERS,
@@ -71,7 +76,7 @@ class UIHelper:
         print(f"{Colors.CYAN}{'─' * 64}{Colors.ENDC}")
     
     @staticmethod
-    def get_valid_port(prompt: str) -> Optional[int]:
+    def get_valid_port(prompt: str) -> int:
         """Solicita e valida entrada de porta do usuário."""
         port_input = input(prompt)
         port = validate_port(port_input)
@@ -489,7 +494,6 @@ class ProxyMenu:
     def main_menu(self):
         """Exibe o menu principal."""
         while True:
-            # Preparar informações de status
             config = self.config_manager.get_config()
             
             if self.service_manager.is_available():
@@ -502,7 +506,6 @@ class ProxyMenu:
             current_mode = config.get("mode", [])
             protocol_display = ", ".join([m.upper() for m in current_mode]) if current_mode else "Nenhum"
             
-            # Usar o método pad_ansi_text para alinhamento correto
             status_padded = self.ui.pad_ansi_text(status_text, 40)
             
             self.ui.clear_screen()
