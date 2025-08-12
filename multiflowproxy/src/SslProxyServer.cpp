@@ -1,4 +1,5 @@
 #include "SslProxyServer.h"
+#include <cstdlib> // Adicionado para system
 
 SslProxyServer::SslProxyServer(const ProxyConfig& config) 
     : ProxyServer(config), ssl_context_(nullptr) {
@@ -41,12 +42,12 @@ std::shared_ptr<Client> SslProxyServer::acceptConnection() {
 bool SslProxyServer::handleSSLHandshake(int client_fd) {
     SSL* ssl = SSL_new(ssl_context_);
     if (!ssl) {
-        std::cerr << "Failed to create SSL structure" << std::endl;
+        LOG_ERROR("Failed to create SSL structure");
         return false;
     }
     
     if (SSL_set_fd(ssl, client_fd) != 1) {
-        std::cerr << "Failed to set SSL file descriptor" << std::endl;
+        LOG_ERROR("Failed to set SSL file descriptor");
         SSL_free(ssl);
         return false;
     }
@@ -54,15 +55,13 @@ bool SslProxyServer::handleSSLHandshake(int client_fd) {
     int result = SSL_accept(ssl);
     if (result <= 0) {
         int ssl_error = SSL_get_error(ssl, result);
-        std::cerr << "SSL handshake failed: " << ssl_error << std::endl;
+        LOG_ERROR("SSL handshake failed: " << ssl_error);
         ERR_print_errors_fp(stderr);
         SSL_free(ssl);
         return false;
     }
     
     // SSL handshake successful
-    // Note: In a real implementation, you would store the SSL object
-    // and use SSL_read/SSL_write for communication
     SSL_free(ssl);
     return true;
 }
@@ -70,16 +69,16 @@ bool SslProxyServer::handleSSLHandshake(int client_fd) {
 bool SslProxyServer::initializeSSLContext() {
     ssl_context_ = SSL_CTX_new(TLS_server_method());
     if (!ssl_context_) {
-        std::cerr << "Failed to create SSL context" << std::endl;
+        LOG_ERROR("Failed to create SSL context");
         return false;
     }
     
     // Set SSL options
-    SSL_CTX_set_options(ssl_context_, SSL_OP_SINGLE_DH_USE);
-    
+    SSL_CTX_set_options(ssl_context_, SSL_OP_SINGLE_DH_USE | SSL_OP_LEGACY_SERVER_CONNECT); // Adicionado legacy para compat
+
     // Set cipher list
     if (SSL_CTX_set_cipher_list(ssl_context_, "DEFAULT") != 1) {
-        std::cerr << "Failed to set cipher list" << std::endl;
+        LOG_ERROR("Failed to set cipher list");
         return false;
     }
     
@@ -105,28 +104,25 @@ void SslProxyServer::cleanupSSLContext() {
 
 bool SslProxyServer::loadCertificates() {
     if (config_.cert_path.empty()) {
-        std::cerr << "Certificate path is empty" << std::endl;
-        return false;
+        LOG_WARNING("No cert path provided, generating temp self-signed cert...");
+        system("openssl req -new -x509 -days 365 -nodes -out temp.crt -keyout temp.key -subj \"/CN=localhost\" 2>/dev/null");
+        config_.cert_path = "temp.crt";
     }
-    
     if (SSL_CTX_use_certificate_file(ssl_context_, config_.cert_path.c_str(), SSL_FILETYPE_PEM) != 1) {
-        std::cerr << "Failed to load SSL certificate file" << std::endl;
+        LOG_ERROR("Failed to load SSL certificate file");
         ERR_print_errors_fp(stderr);
         return false;
     }
-    
     return true;
 }
 
 bool SslProxyServer::loadPrivateKey() {
-    // Assume private key is in the same file as certificate for simplicity
-    // In production, you might want separate files
-    if (SSL_CTX_use_PrivateKey_file(ssl_context_, config_.cert_path.c_str(), SSL_FILETYPE_PEM) != 1) {
-        std::cerr << "Failed to load SSL private key file" << std::endl;
+    std::string key_path = config_.cert_path == "temp.crt" ? "temp.key" : config_.cert_path;
+    if (SSL_CTX_use_PrivateKey_file(ssl_context_, key_path.c_str(), SSL_FILETYPE_PEM) != 1) {
+        LOG_ERROR("Failed to load SSL private key file");
         ERR_print_errors_fp(stderr);
         return false;
     }
-    
     return true;
 }
 
@@ -136,6 +132,5 @@ void SslProxyServer::initializeOpenSSL() {
 }
 
 void SslProxyServer::cleanupOpenSSL() {
-    // OpenSSL cleanup is handled automatically in modern versions
+    // Automatico
 }
-
