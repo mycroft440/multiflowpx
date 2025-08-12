@@ -22,10 +22,10 @@ if [ "$(id -u)" -ne 0 ]; then
 fi
 sucesso "Executando como root."
 
-# 2. Instalar dependências básicas (git)
-log "Atualizando a lista de pacotes e instalando o git..."
+# 2. Instalar dependências básicas (git e python3)
+log "Atualizando a lista de pacotes e instalando o git e python3..."
 apt-get update > /dev/null 2>&1
-apt-get install -y git || erro "Falha ao instalar o git."
+apt-get install -y git python3 || erro "Falha ao instalar o git ou python3."
 
 # 3. Gerir o diretório do projeto (Clonar ou Atualizar)
 if [ -d "$PROJETO_DIR/.git" ]; then
@@ -39,67 +39,12 @@ else
 fi
 sucesso "Código-fonte pronto em $PROJETO_DIR."
 
-# 4. Instalar dependências de compilação
-log "Instalando dependências de compilação (build-essential, cmake, libssl-dev, libboost-all-dev, libcurl4-openssl-dev)..."
-apt-get install -y build-essential cmake libssl-dev libboost-all-dev libcurl4-openssl-dev || erro "Falha ao instalar as dependências de compilação."
-sucesso "Dependências de compilação instaladas."
+# 4. Chamar o script de instalação de dependências Python
+log "Executando o script de instalação de dependências Python..."
+python3 "$PROJETO_DIR/multiflowproxy/instalar_deps_multiflowpx.py" || erro "Falha ao executar o script de instalação de dependências."
+sucesso "Dependências instaladas via instalar_deps_multiflowpx.py."
 
-# 5. Compilar o projeto
-log "Navegando para o diretório do proxy para compilação..."
-cd multiflowproxy || erro "Não foi possível encontrar o subdiretório 'multiflowproxy'."
-
-log "Criando o diretório de compilação..."
-mkdir -p build
-cd build || erro "Não foi possível entrar no diretório 'build'."
-
-log "Executando o CMake..."
-cmake .. || erro "O CMake falhou."
-log "Compilando o projeto com o make..."
-make || erro "A compilação (make) falhou."
-sucesso "Projeto compilado com sucesso."
-
-# 6. Instalar o binário e o serviço
-log "Instalando o binário 'multiflowpx' em /usr/local/bin/..."
-install -m 755 proxy /usr/local/bin/proxy || erro "Falha ao instalar o binário."
-sucesso "Binário instalado."
-
-log "Instalando o serviço systemd..."
-cd .. # Voltar para o diretório multiflowproxy
-
-# Criar o arquivo de serviço com o conteúdo corrigido
-cat <<EOF > /etc/systemd/system/multiflowpx.service
-[Unit]
-Description=MultiFlowPX Proxy Server
-After=network.target
-
-[Service]
-Type=simple
-ExecStart=/usr/local/bin/proxy
-Restart=on-failure
-User=root
-Group=root
-
-[Install]
-WantedBy=multi-user.target
-EOF
-
-sucesso "Ficheiro de serviço instalado."
-
-# 7. Habilitar e iniciar o serviço
-log "Recarregando o systemd, habilitando e iniciando o serviço multiflowpx..."
-systemctl daemon-reload || erro "Falha ao recarregar o systemd."
-systemctl enable multiflowpx.service || erro "Falha ao habilitar o serviço."
-systemctl start multiflowpx.service || erro "Falha ao iniciar o serviço."
-
-# 8. Verificar o status do serviço
-log "Verificando o status do serviço..."
-if systemctl is-active --quiet multiflowpx.service; then
-    sucesso "O serviço multiflowpx está ativo e a ser executado."
-else
-    erro "O serviço multiflowpx falhou ao iniciar. Verifique os logs com 'journalctl -u multiflowpx'."
-fi
-
-# 9. Criar link simbólico para o menu
+# 5. Criar link simbólico para o menu
 log "Criando link simbólico para o menu do MultiFlowPX..."
 MENU_SCRIPT="$PROJETO_DIR/proxy_menu.py"
 MENU_ALIAS="/usr/local/bin/g"
@@ -115,6 +60,6 @@ fi
 echo -e "\n${VERDE}====================================================="
 echo -e " Instalação do MultiFlowPX concluída com sucesso!"
 echo -e " O programa foi instalado em $PROJETO_DIR"
-echo -e " O comando 'multiflowpx' agora está disponível no sistema."
 echo -e " Para acessar o menu, digite 'g' no terminal."
 echo -e "=====================================================${NC}"
+
