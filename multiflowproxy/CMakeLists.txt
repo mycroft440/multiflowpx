@@ -8,24 +8,25 @@ project(multiflowpx CXX)
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
-# Encontra as dependências necessárias: OpenSSL e Boost (threads e system).
+# Encontra as dependências necessárias: OpenSSL e Boost (threads e system) e CURL.
 # REQUIRED garante que o CMake falhará se não encontrar as bibliotecas.
 find_package(OpenSSL REQUIRED)
 find_package(Boost REQUIRED COMPONENTS thread system)
 find_package(CURL REQUIRED)
 
-# Define o executável principal do projeto, chamado "proxy".
-add_executable(proxy)
+# Nome do executável alinhado com o install.sh e o service: multiflowpx_proxy
+set(EXEC_NAME multiflowpx_proxy)
 
-# Adiciona os diretórios de cabeçalho ao alvo "proxy".
-# Usar target_include_directories com PUBLIC garante que outros alvos que linkarem
-# com "proxy" também terão acesso a esses includes.
-target_include_directories(proxy PUBLIC
+# Define o executável principal do projeto.
+add_executable(${EXEC_NAME})
+
+# Adiciona os diretórios de cabeçalho ao alvo.
+target_include_directories(${EXEC_NAME} PUBLIC
     ${PROJECT_SOURCE_DIR}/include
 )
 
 # Lista todos os arquivos-fonte (.cpp) que compõem o executável.
-target_sources(proxy PRIVATE
+target_sources(${EXEC_NAME} PRIVATE
     src/main.cpp
     src/ArgumentParser.cpp
     src/Client.cpp
@@ -45,14 +46,13 @@ target_sources(proxy PRIVATE
     src/Worker.cpp
 )
 
-# Linka as bibliotecas necessárias (OpenSSL e Boost) ao alvo "proxy".
-# Usar target_link_libraries é a prática moderna para vincular dependências
-# a um alvo específico, evitando poluir o escopo global.
-target_link_libraries(proxy PRIVATE
+# Linka as bibliotecas necessárias ao alvo.
+target_link_libraries(${EXEC_NAME} PRIVATE
     ${OPENSSL_LIBRARIES}
     Boost::thread
     Boost::system
     ${CURL_LIBRARIES}
 )
-# Comando para instalar o executável no diretório 'bin' do sistema.
-install(TARGETS proxy DESTINATION bin)
+
+# Comando para instalar o executável no diretório 'bin' (prefixo padrão: /usr/local).
+install(TARGETS ${EXEC_NAME} DESTINATION bin)
