@@ -118,4 +118,3 @@ echo -e " O programa foi instalado em $PROJETO_DIR"
 echo -e " O comando \'multiflowpx\' agora está disponível no sistema."
 echo -e " Para acessar o menu, digite \'g\' no terminal."
 echo -e "=====================================================${NC}"
-
