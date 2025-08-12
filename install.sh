@@ -47,6 +47,43 @@ erro() { echo -e "${VERMELHO}[ERRO] $1${NC}" >&2; exit 1; }
 
 has_cmd() { command -v "$1" >/dev/null 2>&1; }
 
+# Atualização segura do repositório (evita falha com mudanças locais)
+update_repo_safely() {
+  local remote="${1:-origin}"
+  local branch="${2:-main}"
+
+  # Permite pular o update via variável de ambiente
+  if [ "${MF_NO_GIT_UPDATE:-0}" = "1" ]; then
+    log "Pulando atualização do Git (MF_NO_GIT_UPDATE=1)."
+    return 0
+  fi
+
+  if ! has_cmd git; then
+    log "git não encontrado; pulando atualização do repositório."
+    return 0
+  fi
+
+  if ! git rev-parse --is-inside-work-tree >/dev/null 2>&1; then
+    log "Diretório atual não é um repositório Git; pulando 'git pull'."
+    return 0
+  fi
+
+  log "Atualizando repositório (git pull --rebase --autostash ${remote} ${branch})..."
+  if git pull --rebase --autostash "${remote}" "${branch}"; then
+    sucesso "Repositório atualizado com sucesso (autostash)."
+    return 0
+  fi
+
+  log "'--autostash' pode não estar disponível. Tentando fallback (rebase.autoStash=true)..."
+  if git -c rebase.autoStash=true pull --rebase "${remote}" "${branch}"; then
+    sucesso "Repositório atualizado (fallback autoStash)."
+    return 0
+  fi
+
+  # Falha definitiva (mantém comportamento de erro do script original via caller '|| erro')
+  return 1
+}
+
 # 1. Verificar privilégios de root
 log "Verificando privilégios de root..."
 if [ "$(id -u)" -ne 0 ]; then
@@ -68,7 +105,8 @@ sucesso "Dependências instaladas/verificadas."
 if [ -d "$PROJETO_DIR/.git" ]; then
     log "O diretório do projeto já existe. Atualizando o repositório..."
     cd "$PROJETO_DIR" || erro "Não foi possível aceder ao diretório $PROJETO_DIR."
-    git pull --rebase origin main || erro "Falha ao atualizar o repositório com 'git pull'."
+    # CORREÇÃO: substitui 'git pull --rebase origin main' por update_repo_safely
+    update_repo_safely origin main || erro "Falha ao atualizar o repositório (git pull)."
 else
     log "Clonando o repositório do projeto para $PROJETO_DIR..."
     git clone "$REPO_URL" "$PROJETO_DIR" || erro "Falha ao clonar o repositório."
