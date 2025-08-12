@@ -2,17 +2,10 @@
 #define LOGGER_H
 
 #include <iostream>
-#include <string>
+#include <ctime>
 
-// Macros de logging simplificadas
-#define LOG_INFO(message) \
-    std::cout << "[INFO] " << message << std::endl;
-
-#define LOG_WARNING(message) \
-    std::cerr << "[WARNING] " << message << std::endl;
-
-#define LOG_ERROR(message) \
-    std::cerr << "[ERROR] " << message << std::endl;
+#define LOG_INFO(msg) std::cout << "[" << time(NULL) << "] INFO: " << msg << std::endl
+#define LOG_WARNING(msg) std::cerr << "[" << time(NULL) << "] WARNING: " << msg << std::endl
+#define LOG_ERROR(msg) std::cerr << "[" << time(NULL) << "] ERROR: " << msg << std::endl
 
 #endif // LOGGER_H
-
