@@ -11,7 +11,7 @@ NC='\033[0m' # Sem Cor
 PROJETO_DIR="/opt/multiflowpx"
 REPO_URL="https://github.com/mycroft440/multiflowpx.git"
 
-# Caminhos e nomes alinhados com a nova estrutura
+# Caminhos e nomes alinhados com a estrutura
 SRC_CPP_DIR="$PROJETO_DIR/multiflowproxy"
 BUILD_DIR="$SRC_CPP_DIR/build"
 DEPS_SCRIPT="$SRC_CPP_DIR/instalar_deps_multiflowpx.py"
@@ -145,7 +145,7 @@ PY
   sucesso "Config verificado."
 fi
 
-# 7. Instalar serviço systemd
+# 7. Instalar serviço systemd (sem --config)
 if [ -f "$SERVICE_SRC" ]; then
   log "Instalando serviço systemd a partir de $SERVICE_SRC"
   install -m 0644 "$SERVICE_SRC" "$SERVICE_DST"
@@ -153,7 +153,7 @@ else
   log "Arquivo de serviço não encontrado em $SERVICE_SRC. Criando unit padrão."
   cat > "$SERVICE_DST" <<EOF
 [Unit]
-Description=MultiFlowPX Proxy
+Description=MultiFlowPX Proxy Server
 After=network-online.target
 Wants=network-online.target
 
@@ -161,7 +161,7 @@ Wants=network-online.target
 Type=simple
 User=root
 Group=root
-ExecStart=$INSTALL_BIN --config $CONFIG_FILE
+ExecStart=$INSTALL_BIN
 Restart=on-failure
 RestartSec=2s
 LimitNOFILE=1048576
@@ -169,11 +169,6 @@ LimitNOFILE=1048576
 [Install]
 WantedBy=multi-user.target
 EOF
-fi
-
-# Força ExecStart correto (caso o unit do repo tenha outro caminho)
-if grep -q '^ExecStart=' "$SERVICE_DST"; then
-  sed -i "s#^ExecStart=.*#ExecStart=$INSTALL_BIN --config $CONFIG_FILE#g" "$SERVICE_DST" || true
 fi
 
 if has_cmd systemctl; then
@@ -185,10 +180,22 @@ else
 fi
 sucesso "Serviço instalado em $SERVICE_DST."
 
-# 8. Instalar o menu CLI e criar alias
-log "Instalando menu CLI..."
+# 8. Preparar pacote Python para import (garantir __init__.py)
+if [ -d "$PROJETO_DIR/multiflowproxy" ] && [ ! -f "$PROJETO_DIR/multiflowproxy/__init__.py" ]; then
+  log "Criando __init__.py em multiflowproxy para evitar problemas de import."
+  touch "$PROJETO_DIR/multiflowproxy/__init__.py"
+fi
+
+# 9. Instalar o menu CLI via wrapper que injeta PYTHONPATH
+log "Instalando menu CLI (wrapper)..."
 if [ -f "$MENU_SRC" ]; then
-  install -m 0755 "$MENU_SRC" "$MENU_BIN"
+  cat > "$MENU_BIN" <<'EOF'
+#!/usr/bin/env bash
+PROJECT_DIR="/opt/multiflowpx"
+export PYTHONPATH="$PROJECT_DIR:${PYTHONPATH:-}"
+exec python3 "$PROJECT_DIR/menu_multiflowproxy.py" "$@"
+EOF
+  chmod +x "$MENU_BIN"
   ln -sf "$MENU_BIN" "$MENU_ALIAS"
   sucesso "Menu instalado: $MENU_BIN"
   sucesso "Alias criado: $MENU_ALIAS -> $MENU_BIN (use 'g' para abrir o menu)"
@@ -196,7 +203,7 @@ else
   erro "Script do menu ($MENU_SRC) não encontrado."
 fi
 
-# 9. Iniciar/Restartar serviço
+# 10. Iniciar/Restartar serviço
 if has_cmd systemctl; then
   log "Iniciando (ou reiniciando) o serviço..."
   systemctl restart "$SERVICE_NAME" || systemctl start "$SERVICE_NAME" || true
