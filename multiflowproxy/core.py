@@ -10,7 +10,7 @@ import json
 import subprocess
 import shutil
 from functools import wraps
-from typing import Dict, List, Optional, Any
+from typing import Dict, List, Optional, Any, Tuple
 
 # --- Constantes de Configuração ---
 CONFIG_FILE = "/etc/multiflowpx/config.json"
@@ -35,7 +35,7 @@ def requires_systemctl(func):
     """Decorator para métodos que requerem systemctl."""
     @wraps(func)
     def wrapper(self, *args, **kwargs):
-        if not self.systemctl_path:
+        if not getattr(self, "systemctl_path", None):
             return None
         return func(self, *args, **kwargs)
     return wrapper
@@ -70,7 +70,6 @@ class ConfigManager:
             if os.path.exists(CONFIG_FILE):
                 with open(CONFIG_FILE, 'r') as f:
                     loaded_config = json.load(f)
-                    
                 for key, default_value in self.default_config.items():
                     if key in loaded_config and isinstance(loaded_config[key], type(default_value)):
                         config[key] = loaded_config[key]
@@ -188,8 +187,7 @@ class ServiceManager:
     def disable(self) -> bool:
         """Desabilita o serviço."""
         try:
-            subprocess.run([self.systemctl_path, "disable", self.service_name], 
-                         check=False, capture_output=True)
+            subprocess.run([self.systemctl_path, "disable", self.service_name], check=False, capture_output=True)
             return True
         except subprocess.CalledProcessError:
             return False
@@ -209,10 +207,17 @@ class InstallManager:
     @staticmethod
     def find_install_script() -> Optional[str]:
         """Detecta dinamicamente o script de instalação 'install.sh'."""
+        try:
+            core_dir = os.path.dirname(os.path.abspath(__file__))
+        except Exception:
+            core_dir = os.getcwd()
+        project_root = os.path.abspath(os.path.join(core_dir, ".."))
+        
         potential_paths = [
+            os.path.join(project_root, "install.sh"),   # raiz do projeto (onde está menu_multiflowproxy.py)
+            os.path.join(os.getcwd(), "install.sh"),    # diretório atual de execução
             '/root/multiflowpx/install.sh',
             os.path.join(os.path.expanduser("~"), 'multiflowpx/install.sh'),
-            './install.sh'
         ]
         
         for path in potential_paths:
@@ -233,12 +238,12 @@ class InstallManager:
             return False
     
     @staticmethod
-    def uninstall(service_manager: ServiceManager) -> tuple[bool, List[str]]:
+    def uninstall(service_manager: ServiceManager) -> Tuple[bool, List[str]]:
         """
         Desinstala completamente o MultiFlowPX.
         Retorna (sucesso, lista_de_mensagens)
         """
-        messages = []
+        messages: List[str] = []
         
         try:
             # Parar e desabilitar serviço
@@ -299,7 +304,6 @@ def validate_host_format(host: str) -> bool:
     parts = host.split(':')
     if len(parts) != 2:
         return False
-    
     try:
         port = int(parts[1])
         return MIN_PORT <= port <= MAX_PORT
