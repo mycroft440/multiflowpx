@@ -19,6 +19,7 @@ struct ProxyConfig {
     int openvpn_port = Constants::DEFAULT_OPENVPN_PORT;
     int v2ray_port = Constants::DEFAULT_V2RAY_PORT;
     bool show_help = false;
+    std::string remote_host = "127.0.0.1"; // Nova opção para flexibilidade
 };
 
 class ArgumentParser {
@@ -35,4 +36,3 @@ private:
 };
 
 #endif // ARGUMENT_PARSER_H
-
