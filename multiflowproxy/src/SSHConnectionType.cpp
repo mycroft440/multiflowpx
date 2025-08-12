@@ -1,6 +1,7 @@
 #include "SSHConnectionType.h"
 #include "Server.h"
 #include "Client.h"
+#include "Logger.h" // Assegure
 
 SSHConnectionType::SSHConnectionType(std::shared_ptr<Client> client, int socket_fd, int ssh_port) 
     : ConnectionType(client, socket_fd), ssh_port_(ssh_port) {
@@ -67,23 +68,23 @@ bool SSHConnectionType::isSSHProtocol(const std::string& data) const {
 }
 
 bool SSHConnectionType::connectToSSHServer() {
-    try {
-        // Connect to localhost SSH server (assuming SSH server is running locally)
-        server_ = std::make_shared<Server>("127.0.0.1", ssh_port_);
-        
-        if (!server_->connect()) {
-            std::cerr << "Failed to connect to SSH server on port " << ssh_port_ << std::endl;
-            return false;
+    for(int tries = 0; tries < 3; ++tries) {
+        try {
+            // Connect to config remote_host SSH server
+            server_ = std::make_shared<Server>(config_.remote_host, ssh_port_);
+            
+            if (server_->connect()) {
+                LOG_INFO("Connected to SSH server on " << config_.remote_host << ":" << ssh_port_ << " (try " << tries+1 << ")");
+                return true;
+            }
+        } catch (const std::exception& e) {
+            LOG_ERROR("SSH connection error on " << config_.remote_host << " (try " << tries+1 << "): " << e.what());
+            std::this_thread::sleep_for(std::chrono::seconds(2));
         }
-        
-        return true;
-    } catch (const std::exception& e) {
-        std::cerr << "SSH connection error: " << e.what() << std::endl;
-        return false;
     }
+    LOG_ERROR("Failed to connect to SSH server after 3 tries");
+    return false;
 }
-
-
 
 ssize_t SSHConnectionType::read(char* buffer, size_t size) {
     return Connection::read(buffer, size);
@@ -92,5 +93,3 @@ ssize_t SSHConnectionType::read(char* buffer, size_t size) {
 ssize_t SSHConnectionType::write(const char* buffer, size_t size) {
     return Connection::write(buffer, size);
 }
-
-
