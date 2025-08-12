@@ -44,7 +44,7 @@ namespace Constants {
     
     const int DEFAULT_PORT = 8080;
     const int DEFAULT_WORKERS = 4;
-    const int DEFAULT_BUFFER_SIZE = 4096;
+    const int DEFAULT_BUFFER_SIZE = 16384; // Aumentado para evitar premature close
     const int DEFAULT_SSH_PORT = 22;
     const int DEFAULT_OPENVPN_PORT = 1194;
     const int DEFAULT_V2RAY_PORT = 10086;
@@ -66,4 +66,3 @@ namespace Utils {
 }
 
 #endif // COMMON_H
-
