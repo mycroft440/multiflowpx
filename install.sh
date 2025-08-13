@@ -1,259 +1,126 @@
 #!/bin/bash
-set -euo pipefail
+# rustyproxy Installer
 
-# Cores para a saída
-VERDE='\033[0;32m'
-AMARELO='\033[1;33m'
-VERMELHO='\033[0;31m'
-NC='\033[0m' # Sem Cor
+TOTAL_STEPS=11
+CURRENT_STEP=0
 
-# Variáveis do Projeto
-PROJETO_DIR="/opt/multiflowpx"
-REPO_URL="https://github.com/mycroft440/multiflowpx.git"
-
-# Caminhos e nomes alinhados com a estrutura
-SRC_CPP_DIR="$PROJETO_DIR/multiflowproxy"
-BUILD_DIR="$SRC_CPP_DIR/build"
-DEPS_SCRIPT="$SRC_CPP_DIR/instalar_deps_multiflowpx.py"
-
-MENU_SRC="$PROJETO_DIR/menu_multiflowproxy.py"
-MENU_BIN="/usr/local/bin/multiflowpx_menu"
-MENU_ALIAS="/usr/local/bin/g"
-
-SERVICE_NAME="multiflowpx.service"
-SERVICE_SRC="$SRC_CPP_DIR/$SERVICE_NAME"
-SERVICE_DST="/etc/systemd/system/$SERVICE_NAME"
-
-CONFIG_DIR="/etc/multiflowpx"
-CONFIG_FILE="$CONFIG_DIR/config.json"
-
-INSTALL_BIN="/usr/local/bin/multiflowpx_proxy"
-
-# Defaults do config.json (alinhado ao core/menu)
-DEFAULT_CONFIG='{
-    "mode": [],
-    "port": [],
-    "host": "127.0.0.1:22",
-    "sni": "example.com",
-    "workers": 4,
-    "buffer_size": 8192,
-    "log_level": 1
-}'
-
-# Funções de log
-log() { echo -e "${AMARELO}[LOG] $1${NC}"; }
-sucesso() { echo -e "${VERDE}[SUCESSO] $1${NC}"; }
-erro() { echo -e "${VERMELHO}[ERRO] $1${NC}" >&2; exit 1; }
-
-has_cmd() { command -v "$1" >/dev/null 2>&1; }
-
-# Atualização segura do repositório (evita falha com mudanças locais)
-update_repo_safely() {
-  local remote="${1:-origin}"
-  local branch="${2:-main}"
-
-  # Permite pular o update via variável de ambiente
-  if [ "${MF_NO_GIT_UPDATE:-0}" = "1" ]; then
-    log "Pulando atualização do Git (MF_NO_GIT_UPDATE=1)."
-    return 0
-  fi
-
-  if ! has_cmd git; then
-    log "git não encontrado; pulando atualização do repositório."
-    return 0
-  fi
-
-  if ! git rev-parse --is-inside-work-tree >/dev/null 2>&1; then
-    log "Diretório atual não é um repositório Git; pulando 'git pull'."
-    return 0
-  fi
-
-  log "Atualizando repositório (git pull --rebase --autostash ${remote} ${branch})..."
-  if git pull --rebase --autostash "${remote}" "${branch}"; then
-    sucesso "Repositório atualizado com sucesso (autostash)."
-    return 0
-  fi
-
-  log "'--autostash' pode não estar disponível. Tentando fallback (rebase.autoStash=true)..."
-  if git -c rebase.autoStash=true pull --rebase "${remote}" "${branch}"; then
-    sucesso "Repositório atualizado (fallback autoStash)."
-    return 0
-  fi
-
-  # Falha definitiva (mantém comportamento de erro do script original via caller '|| erro')
-  return 1
+show_progress() {
+    PERCENT=$((CURRENT_STEP * 100 / TOTAL_STEPS))
+    echo "Progresso: [${PERCENT}%] - $1"
 }
 
-# 1. Verificar privilégios de root
-log "Verificando privilégios de root..."
-if [ "$(id -u)" -ne 0 ]; then
-    erro "Este script precisa ser executado como root. Por favor, use 'sudo bash install.sh'."
-fi
-sucesso "Executando como root."
+error_exit() {
+    echo -e "\nErro: $1"
+    exit 1
+}
 
-# 2. Instalar dependências básicas
-if has_cmd apt-get; then
-  log "Atualizando a lista de pacotes e instalando dependências..."
-  apt-get update -y > /dev/null 2>&1 || true
-  DEBIAN_FRONTEND=noninteractive apt-get install -y git python3 python3-pip build-essential cmake pkg-config || erro "Falha ao instalar dependências com apt-get."
+increment_step() {
+    CURRENT_STEP=$((CURRENT_STEP + 1))
+}
+
+if [ "$EUID" -ne 0 ]; then
+    error_exit "EXECUTE COMO ROOT"
 else
-  erro "apt-get não encontrado. Instale manualmente: git, python3, python3-pip, build-essential, cmake, pkg-config."
+    clear
+    show_progress "Atualizando repositorios..."
+    export DEBIAN_FRONTEND=noninteractive
+    apt update -y > /dev/null 2>&1 || error_exit "Falha ao atualizar os repositorios"
+    increment_step
+
+    # ---->>>> Verificação do sistema
+    show_progress "Verificando o sistema..."
+    if ! command -v lsb_release &> /dev/null; then
+        apt install lsb-release -y > /dev/null 2>&1 || error_exit "Falha ao instalar lsb-release"
+    fi
+    increment_step
+
+    # ---->>>> Verificação do sistema
+    OS_NAME=$(lsb_release -is)
+    VERSION=$(lsb_release -rs)
+
+    case $OS_NAME in
+        Ubuntu)
+            case $VERSION in
+                24.*|22.*|20.*|18.*)
+                    show_progress "Sistema Ubuntu suportado, continuando..."
+                    ;;
+                *)
+                    error_exit "Versão do Ubuntu não suportada. Use 18, 20, 22 ou 24."
+                    ;;
+            esac
+            ;;
+        Debian)
+            case $VERSION in
+                12*|11*|10*|9*)
+                    show_progress "Sistema Debian suportado, continuando..."
+                    ;;
+                *)
+                    error_exit "Versão do Debian não suportada. Use 9, 10, 11 ou 12."
+                    ;;
+            esac
+            ;;
+        *)
+            error_exit "Sistema não suportado. Use Ubuntu ou Debian."
+            ;;
+    esac
+    increment_step
+
+    # ---->>>> Instalação de pacotes requisitos e atualização do sistema
+    show_progress "Atualizando o sistema..."
+    apt upgrade -y > /dev/null 2>&1 || error_exit "Falha ao atualizar o sistema"
+    apt-get install curl build-essential git -y > /dev/null 2>&1 || error_exit "Falha ao instalar pacotes"
+    increment_step
+
+    # ---->>>> Criando o diretório do script
+    show_progress "Criando diretorio /opt/rustyproxy..."
+    mkdir -p /opt/rustyproxy > /dev/null 2>&1
+    increment_step
+
+    # ---->>>> Instalar python3 e pip (Movido para antes da compilação)
+    show_progress "Instalando python3 e pip..."
+    apt-get install python3 python3-pip -y > /dev/null 2>&1 || error_exit "Falha ao instalar python3 e pip"
+    increment_step
+
+    # ---->>>> Instalar a biblioteca rich (Movido para antes da compilação)
+    show_progress "Instalando a biblioteca rich..."
+    apt-get install python3-rich -y > /dev/null 2>&1 || error_exit "Falha ao instalar a biblioteca rich"
+    increment_step
+
+    # ---->>>> Instalar rust
+    show_progress "Instalando Rust..."
+    if ! command -v rustc &> /dev/null; then
+        curl --proto =https --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y > /dev/null 2>&1 || error_exit "Falha ao instalar Rust"
+        source "$HOME/.cargo/env"
+    fi
+    increment_step
+
+    # ---->>>> Instalar o RustyProxy
+    show_progress "Compilando RustyProxy, isso pode levar algum tempo dependendo da maquina..."
+
+    if [ -d "/root/RustyProxyOnly" ]; then
+        rm -rf /root/RustyProxyOnly
+    fi
+
+    git clone --branch "main" https://github.com/mycroft440/rustyproxy.git /root/RustyProxyOnly > /dev/null 2>&1 || error_exit "Falha ao clonar rustyproxy"
+    mv /root/RustyProxyOnly/menu.py /opt/rustyproxy/menu.py
+    cd /root/RustyProxyOnly/RustyProxy
+    cargo build --release --jobs $(nproc) > /dev/null 2>&1 || error_exit "Falha ao compilar rustyproxy"
+    mv ./target/release/RustyProxy /opt/rustyproxy/proxy
+    increment_step
+
+    # ---->>>> Configuração de permissões
+    show_progress "Configurando permissões..."
+    chmod +x /opt/rustyproxy/proxy
+    chmod +x /opt/rustyproxy/menu.py
+    mkdir -p /usr/local/bin
+    echo -e "#!/usr/bin/python3\nimport os\nimport sys\nsys.path.append(\"/opt/rustyproxy\")\nos.execv(\"/usr/bin/python3\", [\"python3\", \"/opt/rustyproxy/menu.py\"] + sys.argv[1:])" | sudo tee /usr/local/bin/rustyproxy > /dev/null
+    chmod +x /usr/local/bin/rustyproxy
+    increment_step
+
+    # ---->>>> Limpeza
+    rm -rf /root/RustyProxyOnly/
+    increment_step
+
+    # ---->>>> Instalação finalizada :)
+    echo "Instalação concluída com sucesso. Digite 'rustyproxy' para acessar o menu."
 fi
-sucesso "Dependências instaladas/verificadas."
-
-# 3. Gerir o diretório do projeto (Clonar ou Atualizar)
-if [ -d "$PROJETO_DIR/.git" ]; then
-    log "O diretório do projeto já existe. Atualizando o repositório..."
-    cd "$PROJETO_DIR" || erro "Não foi possível aceder ao diretório $PROJETO_DIR."
-    # CORREÇÃO: substitui 'git pull --rebase origin main' por update_repo_safely
-    update_repo_safely origin main || erro "Falha ao atualizar o repositório (git pull)."
-else
-    log "Clonando o repositório do projeto para $PROJETO_DIR..."
-    git clone "$REPO_URL" "$PROJETO_DIR" || erro "Falha ao clonar o repositório."
-    cd "$PROJETO_DIR" || erro "Não foi possível aceder ao diretório $PROJETO_DIR."
-fi
-sucesso "Código-fonte pronto em $PROJETO_DIR."
-
-# 4. Instalar dependências Python do projeto
-if [ -f "$DEPS_SCRIPT" ]; then
-  log "Executando script de dependências Python: $DEPS_SCRIPT"
-  python3 "$DEPS_SCRIPT" || erro "Falha ao executar o script de instalação de dependências Python."
-  sucesso "Dependências Python instaladas via instalar_deps_multiflowpx.py."
-else
-  log "Script de dependências Python não encontrado em $DEPS_SCRIPT (pulando)."
-fi
-
-# 5. Compilar o projeto C++ (via CMake)
-if [ -f "$SRC_CPP_DIR/CMakeLists.txt" ]; then
-  log "Compilando projeto C++ com CMake..."
-  mkdir -p "$BUILD_DIR"
-  cmake -S "$SRC_CPP_DIR" -B "$BUILD_DIR" -DCMAKE_BUILD_TYPE=Release
-  cmake --build "$BUILD_DIR" --config Release -j"$(nproc 2>/dev/null || echo 2)"
-
-  log "Localizando binário compilado..."
-  CANDIDATE_BIN=""
-  for p in \
-    "$BUILD_DIR/multiflowpx_proxy" \
-    "$BUILD_DIR/src/multiflowpx_proxy" \
-    "$BUILD_DIR/multiflowproxy" \
-    "$BUILD_DIR/src/multiflowproxy"
-  do
-    if [ -f "$p" ] && [ -x "$p" ]; then CANDIDATE_BIN="$p"; break; fi
-  done
-
-  if [ -z "${CANDIDATE_BIN:-}" ]; then
-    CANDIDATE_BIN="$(find "$BUILD_DIR" -type f -executable -name 'multiflow*' | head -n1 || true)"
-  fi
-
-  if [ -z "${CANDIDATE_BIN:-}" ]; then
-    erro "Não foi possível localizar o binário compilado (padrão multiflow*). Verifique o CMakeLists.txt."
-  fi
-
-  log "Instalando binário em $INSTALL_BIN"
-  install -d "$(dirname "$INSTALL_BIN")"
-  install -m 0755 "$CANDIDATE_BIN" "$INSTALL_BIN"
-  sucesso "Binário instalado: $INSTALL_BIN"
-else
-  erro "CMakeLists.txt não encontrado em $SRC_CPP_DIR. Não é possível compilar o binário."
-fi
-
-# 6. Garantir arquivo de configuração
-log "Garantindo arquivo de configuração em $CONFIG_FILE"
-install -d "$CONFIG_DIR"
-if [ ! -f "$CONFIG_FILE" ]; then
-  echo "$DEFAULT_CONFIG" > "$CONFIG_FILE"
-  sucesso "Config padrão criado."
-else
-  # Validação leve do JSON; se inválido, regrava default
-  if ! python3 - <<'PY' "$CONFIG_FILE"
-import json, sys
-p = sys.argv[1]
-try:
-    with open(p, 'r') as f:
-        json.load(f)
-    print("OK")
-except Exception:
-    print("BAD")
-    sys.exit(1)
-PY
-  then
-    log "Config existente inválido/corrompido. Recriando com defaults."
-    echo "$DEFAULT_CONFIG" > "$CONFIG_FILE"
-  fi
-  sucesso "Config verificado."
-fi
-
-# 7. Instalar serviço systemd (sem --config)
-if [ -f "$SERVICE_SRC" ]; then
-  log "Instalando serviço systemd a partir de $SERVICE_SRC"
-  install -m 0644 "$SERVICE_SRC" "$SERVICE_DST"
-else
-  log "Arquivo de serviço não encontrado em $SERVICE_SRC. Criando unit padrão."
-  cat > "$SERVICE_DST" <<EOF
-[Unit]
-Description=MultiFlowPX Proxy Server
-After=network-online.target
-Wants=network-online.target
-
-[Service]
-Type=simple
-User=root
-Group=root
-ExecStart=$INSTALL_BIN
-Restart=on-failure
-RestartSec=2s
-LimitNOFILE=1048576
-
-[Install]
-WantedBy=multi-user.target
-EOF
-fi
-
-if has_cmd systemctl; then
-  log "Recarregando daemon do systemd e habilitando serviço..."
-  systemctl daemon-reload
-  systemctl enable "$SERVICE_NAME" || true
-else
-  log "systemctl não encontrado. Pulos relacionados ao serviço."
-fi
-sucesso "Serviço instalado em $SERVICE_DST."
-
-# 8. Preparar pacote Python para import (garantir __init__.py)
-if [ -d "$PROJETO_DIR/multiflowproxy" ] && [ ! -f "$PROJETO_DIR/multiflowproxy/__init__.py" ]; then
-  log "Criando __init__.py em multiflowproxy para evitar problemas de import."
-  touch "$PROJETO_DIR/multiflowproxy/__init__.py"
-fi
-
-# 9. Instalar o menu CLI via wrapper que injeta PYTHONPATH
-log "Instalando menu CLI (wrapper)..."
-if [ -f "$MENU_SRC" ]; then
-  cat > "$MENU_BIN" <<'EOF'
-#!/usr/bin/env bash
-PROJECT_DIR="/opt/multiflowpx"
-export PYTHONPATH="$PROJECT_DIR:${PYTHONPATH:-}"
-exec python3 "$PROJECT_DIR/menu_multiflowproxy.py" "$@"
-EOF
-  chmod +x "$MENU_BIN"
-  ln -sf "$MENU_BIN" "$MENU_ALIAS"
-  sucesso "Menu instalado: $MENU_BIN"
-  sucesso "Alias criado: $MENU_ALIAS -> $MENU_BIN (use 'g' para abrir o menu)"
-else
-  erro "Script do menu ($MENU_SRC) não encontrado."
-fi
-
-# 10. Iniciar/Restartar serviço
-if has_cmd systemctl; then
-  log "Iniciando (ou reiniciando) o serviço..."
-  systemctl restart "$SERVICE_NAME" || systemctl start "$SERVICE_NAME" || true
-  systemctl status "$SERVICE_NAME" --no-pager -l || true
-fi
-
-echo -e "\n${VERDE}====================================================="
-echo -e " Instalação do MultiFlowPX concluída com sucesso!"
-echo -e " Diretório do projeto: $PROJETO_DIR"
-echo -e " Binário: $INSTALL_BIN"
-echo -e " Serviço: $SERVICE_NAME (systemd)"
-echo -e " Config:  $CONFIG_FILE"
-echo -e " Menu:    $MENU_BIN (atalho: 'g')"
-echo -e " Para acessar o menu, digite: g"
-echo -e "===================================================== ${NC}"
